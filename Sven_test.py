@@ -1,5 +1,4 @@
 import numpy as np
-import numba as nb
 from scipy.stats import maxwell
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -7,8 +6,9 @@ from copy import copy
 from matplotlib.widgets import Slider
 
 # Periodic boundary conditions
-# Rabbits are field with positions, velocities awareness radius.
+# Rabbits are field with positions, velocities, awareness radius.
 NVAR = 5
+PVAR = NVAR-1
 N = 50
 R = 0.15
 GA = 0.2
@@ -20,10 +20,11 @@ PRED_NOISE = 0.02
 RADIUS_PRED = 0.2
 Niterations = 100
 MAX_SPEED = 0.01/dt
+PRED_SPEED = MAX_SPEED #NEW
 DECAY_RATE = 0.995
 
 #@nb.njit
-def init_rabbits(N, T):
+def init_rabbits(N, NVAR):
     # Velocities and positions
     rabbits = np.zeros((N, NVAR))
 
@@ -38,7 +39,7 @@ def init_rabbits(N, T):
 def init_nn_array(N):
     return np.zeros((N, N - 1))
 
-@nb.njit
+# @nb.njit
 def get_rn_noise(amplitude):
     
     # Random walk
@@ -46,15 +47,38 @@ def get_rn_noise(amplitude):
     perturbation = amplitude * (np.random.rand(N, 2) - 0.5)
     return perturbation
 
-@nb.njit
-def get_predator_force(N, rabbits, predator, PA):
-    distances = rabbits[:, 0:2] - predator[0:2]
-    # Inefficient
-    for i, distance in enumerate(distances):
-        if np.linalg.norm(distance) > RADIUS_PRED:
-            distances[i, :] = np.inf
-            
+##NEW
+from scipy.spatial import distance
+
+def closest_node(node, nodes):
+    """https://codereview.stackexchange.com/questions/28207/finding-the-closest-point-to-a-list-of-points"""
+    return distance.cdist([node[:2]], nodes[:,:2]).argmin()
+
+def get_closest_other(rabbits,predators):
+    """Get closest rabbit-predator pair"""
+    return np.apply_along_axis(closest_node, 1, rabbits, predators)
+
+def init_predators(N,PVAR):
+    # Velocities and positions
+    predators = np.zeros((N, PVAR))
+
+    positions = np.random.rand(N, 2)
+    predators[:, 0:2] = positions
+    
+    velocities = np.random.rand(N, 2)
+    predators[:, 2:4] = velocities
+    
+    return predators
+
+def predator_force(zero, distances, RADIUS_PRED, PA):
+    mask = np.linalg.norm(zero[:4] - distances) > RADIUS_PRED
+    distances[mask] = np.inf
     return PA/distances
+
+def get_predators_force(rabbits, predators, PA):
+    return np.apply_along_axis(predator_force, 1, rabbits, predators, RADIUS_PRED,PA).sum(axis=1)[:,2:4]
+
+##TIll here
 
 def update_velocities(dt):
     
@@ -62,26 +86,28 @@ def update_velocities(dt):
     nn = get_nn(R)
     group_force = get_group_influence(GA, nn)
     perturbation = get_rn_noise(RA)
-    predator_force = get_predator_force(N, rabbits, predator, PA)
-    
-    rabbits[:, 2:4] += dt * (group_force + perturbation + predator_force) 
+    predators_force = get_predators_force(rabbits, predators, PA)
+    rabbits[:, 2:4] += dt * (group_force + perturbation + predators_force) 
     rabbits[:, 2:4] *= DECAY_RATE
 
     for rabbit in rabbits:
         v = np.linalg.norm(rabbit[2:4])
         if v > MAX_SPEED:
             rabbit[2:4] = rabbit[2:4] * MAX_SPEED/ v
+    
     # Predator
-    predator[2:4] += PRED_NOISE * (np.random.rand(2) - 0.5)
+    closest_rabbits = get_closest_other(predators,rabbits) #IDK how to normalize properly
+    predators[:, 2:4] = PRED_SPEED*(rabbits[closest_rabbits][:,:2]/np.linalg.norm(rabbits[closest_rabbits][:,:2],axis=1)[:,None]**2)
+    predators[:, 2:4] += PRED_NOISE * (np.random.rand(2) - 0.5)
     
 def step(dt):
-    
     update_velocities(dt)
     
     rabbits[:, 0] = (rabbits[:, 0] + dt * rabbits[:, 2]) % 1
     rabbits[:, 1] = (rabbits[:, 1] + dt * rabbits[:, 3]) % 1
-    predator[0] = (predator[0] + dt * predator[2]) % 1
-    predator[1] = (predator[1] + dt * predator[3]) % 1
+    
+    predators[:, 0] = (predators[:, 0] + dt * predators[:, 2]) % 1
+    predators[:, 1] = (predators[:, 1] + dt * predators[:, 3]) % 1
     return rabbits
 
 def get_nn(r):
@@ -126,7 +152,7 @@ def animatePeriodic(i):
     step(dt)
     rect.set_edgecolor('k')
     fields[0].set_offsets(rabbits[:, 0:2])
-    fields[1].set_offsets(predator[0:2])
+    fields[1].set_offsets(predators[:,0:2])
     return fields
 
 
@@ -181,8 +207,8 @@ def get_group_influence(amplitude, nn):
             
         
 if __name__ == '__main__':
-    rabbits = init_rabbits(N, 2)
-    predator = np.array([0.5, 0.5, 0.4, 0.6])
+    rabbits = init_rabbits(N, NVAR)
+    predators = init_predators(3, PVAR)
     nn_array = np.zeros((N, N, 2), dtype = np.int)
     combination_array = np.zeros((N, N), dtype = np.int)
     nn_indices = np.zeros((N), dtype = np.int)
@@ -228,10 +254,10 @@ if __name__ == '__main__':
     
     ani = animation.FuncAnimation(fig, animatePeriodic, frames=Niterations,
                                 interval=1, blit=True)
-    
+ 
     # Settings for save
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 
-    # ani.save('panic.mp4', writer=writer)
+#     ani.save('panic.mp4', writer=writer)
     plt.show()
