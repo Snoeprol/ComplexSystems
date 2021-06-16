@@ -233,5 +233,5 @@ if __name__ == '__main__':
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
 
-    # ani.save('panic.mp4', writer=writer)
+    ani.save('panic.mp4', writer=writer)
     plt.show()
