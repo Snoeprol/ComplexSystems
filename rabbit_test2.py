@@ -179,7 +179,7 @@ def get_group_influence(amplitude, nn):
         
     return amplitude * group_velocities          
             
-        
+# Only run when main file
 if __name__ == '__main__':
     rabbits = init_rabbits(N, 2)
     predator = np.array([0.5, 0.5, 0.4, 0.6])
