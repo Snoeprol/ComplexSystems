@@ -1,11 +1,12 @@
-from numba import njit
+# from numba import njit
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from mpl_toolkits.axes_grid import make_axes_locatable
 import time
 from tqdm import tqdm
 
-@njit
+# @njit
 def init_arrays(N):
     U = np.ones((N, N))#np.random.rand(N, N)
     V = np.zeros((N, N))
@@ -18,11 +19,11 @@ def init_arrays(N):
     L_V = np.zeros((N, N)) 
     return U, V, F, G, L_U, L_V
 
-@njit()
+# @njit()
 def get_F(U, V, alpha, beta, gamma):
     return alpha * U * ((1 - U) - (V / (1 + beta * U)))
 
-@njit
+# @njit
 def get_G(U, V, alpha, beta, gamma):
     return V * (beta * U / (1 + beta * U) - gamma)
 
@@ -57,7 +58,7 @@ def get_neighbors(Ob, U, V):
                     
     return neighbors, nn_numbers
 
-@njit
+# @njit
 def get_laplacian_with_object(D_U, U, L_U, nn_array, nn_numbers):
     """
     L_U is the array that will be filled with the Laplacian
@@ -80,7 +81,7 @@ def get_circle(R, displacement_x, displacement_y):
             obj[i, j] = (i- N//2 - displacement_x)**2 + (j- N//2 - displacement_y)**2 < R**2
     return obj
 
-@njit
+# @njit
 def get_laplacian(D_U, U, L_U):
     """
     L_U is the array that will be filled with the Laplacian
@@ -91,7 +92,7 @@ def get_laplacian(D_U, U, L_U):
             L_U[i, j] = C * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j])
     
 
-@njit
+# @njit
 def update(A, F_A, L_A, dt):
     """
     Updates a function A where F_A is the updating function of A
@@ -100,7 +101,7 @@ def update(A, F_A, L_A, dt):
     A += dt * (F_A + L_A)
     return A
 
-@njit
+# @njit
 def do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, nn, nn_numbers, data_array = None, i = None):
     # Initialize concentration matrix c(x,y;t)
     F = get_F(U, V, alpha, beta, gamma)
@@ -113,7 +114,7 @@ def do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma,
         data_array[i, 0] = np.mean(U)
         data_array[i, 1] = np.mean(V)
 
-@njit
+# @njit
 def do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, data_array = None, i = None):
     # Initialize concentration matrix c(x,y;t)
     F = get_F(U, V, alpha, beta, gamma)
@@ -171,16 +172,20 @@ def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
     axes[0].plot(data_array[:, 0], label = 'U')
     axes[0].plot(data_array[:, 1], label = 'V')
     axes[0].legend()
-    im1 = axes[1].imshow(U, cmap = plt.get_cmap(color))
-    fig.colorbar(im1, ax = axes[1])
+
+    im1 = axes[1].imshow(U, origin = "Bottom", cmap = plt.get_cmap(color))
+    divider1 = make_axes_locatable(axes[1])
+    cax1 = divider1.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(im1, cax=cax1)
     axes[1].title.set_text('U')
-    im2 = axes[2].imshow(V, plt.get_cmap(color))
-    fig.colorbar(im2, ax = axes[2])
+
+    im2 = axes[2].imshow(V, origin = "Bottom", cmap = plt.get_cmap(color))
+    divider2 = make_axes_locatable(axes[2])
+    cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(im2, cax=cax2)
     axes[2].title.set_text('V')
 
-
-
-    plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png', dpi = dpi)
+    # plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png', dpi = dpi)
     plt.clf()
     
 N = 300
