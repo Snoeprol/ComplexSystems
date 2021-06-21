@@ -10,8 +10,8 @@ def init_arrays(N):
     U = np.ones((N, N))#np.random.rand(N, N)
     V = np.zeros((N, N))
     #V[N//2-10 : N//2+10, N//2-10 : N//2+10] = 5
-    V[N//5:N//5 + N//10, N//2:N//2 + N//10] = 5
-    V[N//2:N//2 + N//10, N//5:N//5 + N//10] = 5
+    #V[N//5:N//5 + N//10, N//2:N//2 + N//10] = 5
+    V[N//2:N//2 + N//10, N//2:N//2 + N//10] = 5
     F = np.zeros((N, N))
     G = np.zeros((N, N))
     L_U = np.zeros((N, N)) 
@@ -31,9 +31,10 @@ def get_laplacian(D_U, U, L_U):
     """
     L_U is the array that will be filled with the Laplacian
     """
+    C = D_U/dx**2
     for i in range(0, N):
         for j in range(0, N):
-            L_U[i, j] = D_U * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j]) 
+            L_U[i, j] = C * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j]) 
 
 @njit
 def update(A, F_A, L_A, dt):
@@ -83,8 +84,36 @@ def mkdir_p(mypath):
         if exc.errno == EEXIST and path.isdir(mypath):
             pass
         else: raise
+
+# Create new directory
+def explore_colormaps(U, V):
+    
+    p =  plt.colormaps()
+    output_dir = "data/colormaps"
+    mkdir_p(output_dir)
+
+    for color in p:
+        make_fig(U, V, color, 100, output_dir)
         
-N = 40
+def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
+    fig, axes = plt.subplots(1, 3, figsize = (15,5))
+    axes[0].plot(data_array[:, 0], label = 'U')
+    axes[0].plot(data_array[:, 1], label = 'V')
+    axes[0].legend()
+    im1 = axes[1].imshow(U, cmap = plt.get_cmap(color))
+    fig.colorbar(im1, ax = axes[1])
+    axes[1].title.set_text('U')
+    im2 = axes[2].imshow(V, plt.get_cmap(color))
+    fig.colorbar(im2, ax = axes[2])
+    axes[2].title.set_text('V')
+
+
+
+    plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png', dpi = dpi)
+    plt.clf()
+    
+N = 50
+dx = 400/N
 U, V, F, G, L_U, L_V = init_arrays(N)
 D_U = 0.01
 D_V = 1
@@ -93,7 +122,7 @@ beta = 12
 gamma = 0.5
 dt = 0.05
 
-Nit = 10_000
+Nit = 400
 data_array = np.zeros((Nit, 2))
 
 fps = 15
@@ -113,30 +142,18 @@ for im in ims:
 
 
 anim = animation.FuncAnimation(fig, animate_func,frames = nSeconds * fps, interval = 1000 / fps, repeat=False)
-plt.show()
+#plt.show()
 
-#anim.save('test_anim.mp4', fps=fps, extra_args=['-vcodec', 'libx264'])
+print('starting save')
+
+anim.save(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.mp4', fps=fps, extra_args=['-vcodec', 'libx264'])
 
 print('Done!')
 
 for i in tqdm(range(Nit)):
     do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, data_array, i)
-fig, axes = plt.subplots(1, 3, figsize = (15,5))
 
-axes[0].plot(data_array[:, 0], label = 'U')
-axes[0].plot(data_array[:, 1], label = 'V')
-axes[0].legend()
-im1 = axes[1].imshow(U)
-fig.colorbar(im1, ax = axes[1])
-axes[1].title.set_text('U')
-im2 = axes[2].imshow(V)
-fig.colorbar(im2, ax = axes[2])
-axes[2].title.set_text('V')
+make_fig(U, V)
 
-# Create new directory
-output_dir = "data"
-mkdir_p(output_dir)
 
-plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}.png', dpi = 500)
-plt.show()
-
+    
