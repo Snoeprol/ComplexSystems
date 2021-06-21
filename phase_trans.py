@@ -9,9 +9,9 @@ from tqdm import tqdm
 def init_arrays(N):
     U = np.ones((N, N))#np.random.rand(N, N)
     V = np.zeros((N, N))
-    #V[N//2-10 : N//2+10, N//2-10 : N//2+10] = 5
+    V[N//2-10 : N//2+10, N//2-10 : N//2+10] = 5
     V[N//5:N//5 + N//10, N//2:N//2 + N//10] = 5
-    V[N//2:N//2 + N//10, N//5:N//5 + N//10] = 5
+    V[N//2:N//2 + N//10, N//2:N//2 + N//10] = 5
     F = np.zeros((N, N))
     G = np.zeros((N, N))
     L_U = np.zeros((N, N)) 
@@ -26,14 +26,70 @@ def get_F(U, V, alpha, beta, gamma):
 def get_G(U, V, alpha, beta, gamma):
     return V * (beta * U / (1 + beta * U) - gamma)
 
+def get_neighbors(Ob, U, V):
+
+    neighbors = np.zeros((N, N, 4, 2), np.int)
+    neighbors[:, :, :, :] = -1
+    
+    nn_numbers = np.zeros((N, N), dtype = np.int)
+    for i in range(N):
+        for j in range(N):
+            if Ob[i, j] == True:
+                U[i, j] = 0
+                V[i, j] = 0
+            else: 
+                if not Ob[(i + 1) % N, j]:
+                    neighbors[i, j, nn_numbers[i, j], 0] = (i + 1) % N 
+                    neighbors[i, j, nn_numbers[i, j], 1] = j
+                    nn_numbers[i, j] += 1
+                if not Ob[(i - 1) % N, j]:
+                    neighbors[i, j, nn_numbers[i, j], 0] = (i - 1) % N
+                    neighbors[i, j, nn_numbers[i, j], 1] = j
+                    nn_numbers[i, j] += 1
+                if not Ob[i, (j + 1) % N]:
+                    neighbors[i, j, nn_numbers[i, j], 0] = i 
+                    neighbors[i, j, nn_numbers[i, j], 1] = (j + 1)  % N
+                    nn_numbers[i, j] += 1
+                if not Ob[i, (j - 1) % N]:
+                    neighbors[i, j, nn_numbers[i, j], 0] = i 
+                    neighbors[i, j, nn_numbers[i, j], 1] = (j - 1)  % N
+                    nn_numbers[i, j] += 1
+                    
+    return neighbors, nn_numbers
+
+@njit
+def get_laplacian_with_object(D_U, U, L_U, nn_array, nn_numbers):
+    """
+    L_U is the array that will be filled with the Laplacian
+    """
+    C = D_U/dx**2
+    for i in range(0, N):
+        for j in range(0, N):
+            L_U[i, j] = 0 
+            for k in range(nn_numbers[i, j]):
+                neigh_x, neigh_y = nn_array[i, j, k]
+                L_U[i, j] += U[neigh_x, neigh_y]
+            L_U[i, j] -= nn_numbers[i, j] * U[i, j]
+            L_U[i, j] * C
+
+#@njit
+def get_circle(R, displacement_x, displacement_y):
+    obj = np.zeros((N, N))    
+    for i in range(N):
+        for j in range(N):
+            obj[i, j] = (i- N//2 - displacement_x)**2 + (j- N//2 - displacement_y)**2 < R**2
+    return obj
+
 @njit
 def get_laplacian(D_U, U, L_U):
     """
     L_U is the array that will be filled with the Laplacian
     """
+    C = D_U/dx**2
     for i in range(0, N):
         for j in range(0, N):
-            L_U[i, j] = D_U * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j]) 
+            L_U[i, j] = C * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j])
+    
 
 @njit
 def update(A, F_A, L_A, dt):
@@ -45,7 +101,20 @@ def update(A, F_A, L_A, dt):
     return A
 
 @njit
-def do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, data_array = None, i = None):
+def do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, nn, nn_numbers, data_array = None, i = None):
+    # Initialize concentration matrix c(x,y;t)
+    F = get_F(U, V, alpha, beta, gamma)
+    G = get_G(U, V, alpha, beta, gamma)
+    get_laplacian_with_object(D_U, U, L_U, nn, nn_numbers)
+    get_laplacian_with_object(D_V, V, L_V, nn, nn_numbers)
+    U = update(U, F, L_U, dt)
+    V = update(V, G, L_V, dt)
+    if data_array != None:
+        data_array[i, 0] = np.mean(U)
+        data_array[i, 1] = np.mean(V)
+
+@njit
+def do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, data_array = None, i = None):
     # Initialize concentration matrix c(x,y;t)
     F = get_F(U, V, alpha, beta, gamma)
     G = get_G(U, V, alpha, beta, gamma)
@@ -53,19 +122,22 @@ def do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, da
     get_laplacian(D_V, V, L_V)
     U = update(U, F, L_U, dt)
     V = update(V, G, L_V, dt)
-    data_array[i, 0] = np.mean(U)
-    data_array[i, 1] = np.mean(V)
+    if data_array != None:
+        data_array[i, 0] = np.mean(U)
+        data_array[i, 1] = np.mean(V)
     
 
 def animate_func(i):
     tic = time.perf_counter()
-    do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, data_array, i)
+    for j in range(20):
+        do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx)
     toc = time.perf_counter()
-    print(f"Updated in {toc - tic:0.4f} seconds")
+    print(i)
+    #print(f"Updated in {toc - tic:0.4f} seconds")
     im_1 = axarr[0].imshow(U)
     im_2 = axarr[1].imshow(V)
     for i, cbar in enumerate(cbars):
-        cbar.set_clim(vmin=0,vmax=1)
+        #cbar.set_clim(vmin=0,vmax=1)
         cbar_ticks = np.linspace(0., 2., num=11, endpoint=True)
         cbar.set_ticks(cbar_ticks) 
         cbar.draw_all()
@@ -83,8 +155,36 @@ def mkdir_p(mypath):
         if exc.errno == EEXIST and path.isdir(mypath):
             pass
         else: raise
+
+# Create new directory
+def explore_colormaps(U, V):
+    
+    p =  plt.colormaps()
+    output_dir = "data/colormaps"
+    mkdir_p(output_dir)
+
+    for color in p:
+        make_fig(U, V, color, 100, output_dir)
         
-N = 40
+def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
+    fig, axes = plt.subplots(1, 3, figsize = (15,5))
+    axes[0].plot(data_array[:, 0], label = 'U')
+    axes[0].plot(data_array[:, 1], label = 'V')
+    axes[0].legend()
+    im1 = axes[1].imshow(U, cmap = plt.get_cmap(color))
+    fig.colorbar(im1, ax = axes[1])
+    axes[1].title.set_text('U')
+    im2 = axes[2].imshow(V, plt.get_cmap(color))
+    fig.colorbar(im2, ax = axes[2])
+    axes[2].title.set_text('V')
+
+
+
+    plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png', dpi = dpi)
+    plt.clf()
+    
+N = 300
+dx = 400/N
 U, V, F, G, L_U, L_V = init_arrays(N)
 D_U = 0.01
 D_V = 1
@@ -93,11 +193,12 @@ beta = 12
 gamma = 0.5
 dt = 0.05
 
-Nit = 10_000
+output_dir = "data"
+Nit = 10000
 data_array = np.zeros((Nit, 2))
 
-fps = 15
-nSeconds = 10
+fps = 5
+nSeconds = 20
 
 fig, axarr = plt.subplots(1,2)
 
@@ -112,31 +213,19 @@ for im in ims:
     cbars.append(cbar)
 
 
-anim = animation.FuncAnimation(fig, animate_func,frames = nSeconds * fps, interval = 1000 / fps, repeat=False)
-plt.show()
+#anim = animation.FuncAnimation(fig, animate_func,frames = nSeconds * fps, interval = 1000/ fps, repeat=False)
+#plt.show()
 
-#anim.save('test_anim.mp4', fps=fps, extra_args=['-vcodec', 'libx264'])
+#print('starting save')
 
-print('Done!')
+#anim.save(f'{output_dir}/N_{N}_Nit_{int(fps * nSeconds)}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}.mp4', fps=fps)#, extra_args=['-vcodec', 'libx264'])
 
+#print('Done!')
+
+obj = get_circle(60, 10, 100)
+nn, nn_numbers = get_neighbors(obj, U, V)
 for i in tqdm(range(Nit)):
-    do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, data_array, i)
-fig, axes = plt.subplots(1, 3, figsize = (15,5))
+    do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, nn, nn_numbers, data_array, i)
+    
 
-axes[0].plot(data_array[:, 0], label = 'U')
-axes[0].plot(data_array[:, 1], label = 'V')
-axes[0].legend()
-im1 = axes[1].imshow(U)
-fig.colorbar(im1, ax = axes[1])
-axes[1].title.set_text('U')
-im2 = axes[2].imshow(V)
-fig.colorbar(im2, ax = axes[2])
-axes[2].title.set_text('V')
-
-# Create new directory
-output_dir = "data"
-mkdir_p(output_dir)
-
-plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}.png', dpi = 500)
-plt.show()
-
+make_fig(U, V)
