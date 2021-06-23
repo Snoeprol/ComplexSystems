@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pickle
 import sys
 import os
+import pandas as pd
 
 @njit
 def init_arrays(N):
@@ -166,7 +167,7 @@ def explore_colormaps(U, V):
     for color in p:
         make_fig(U, V, color, 100, output_dir)
         
-def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
+def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'phase'):
     fig, axes = plt.subplots(1, 3, figsize = (15,5))
     axes[0].plot(data_array[:, 0], label = 'U')
     axes[0].plot(data_array[:, 1], label = 'V')
@@ -187,7 +188,7 @@ def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
     # plt.savefig(f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png', dpi = dpi)
     plt.clf()
 
-def make_fig_clean(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
+def make_fig_clean(U, V, color = 'viridis', dpi = 500, output_dir = 'phase'):
     ''' Saves thw predator and prey grid side by side, caculates the image size and returns it'''
     fig, axes = plt.subplots(1, 2, figsize = (10,5))
     im1 = axes[0].imshow(U, cmap = plt.get_cmap(color))
@@ -216,8 +217,8 @@ gamma = 0.2
 beta = 13
 dt = 0.05
 
-output_dir = "data"
-Nit = 2000
+output_dir = "phase"
+Nit = 25000
 data_array = np.zeros((Nit, 2))
 
 fps = 30
@@ -235,25 +236,45 @@ fig, axarr = plt.subplots(1,2)
 #     cbar = plt.colorbar(im)
 #     cbars.append(cbar)
 
-obj = get_circle(60, 10, 100)
-nn, nn_numbers = get_neighbors(obj, U, V)
-anim = animation.FuncAnimation(fig, animate_func,frames = nSeconds * fps, interval = 1000/ fps, repeat=False)
-plt.show()
+# obj = get_circle(60, 10, 100)
+# nn, nn_numbers = get_neighbors(obj, U, V)
+# anim = animation.FuncAnimation(fig, animate_func,frames = nSeconds * fps, interval = 1000/ fps, repeat=False)
+# plt.show()
 
-print('starting save')
+# print('starting save')
 
-anim.save(f'{output_dir}/N_{N}_Nit_{int(fps * nSeconds)}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}.mp4', fps=fps)#, extra_args=['-vcodec', 'libx264'])
+# anim.save(f'{output_dir}/N_{N}_Nit_{int(fps * nSeconds)}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}.mp4', fps=fps)#, extra_args=['-vcodec', 'libx264'])
 
 # #print('Done!')
 
-# obj = get_circle(60, 10, 100)
-# nn, nn_numbers = get_neighbors(obj, U, V)
-# for i in tqdm(range(Nit)):
-#     do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, nn, nn_numbers, data_array, i)
+results = pd.DataFrame(columns=["beta", "gamma", "size", "file_name"])
+color = 'viridis'
+gammas = np.zeros((11))
+gammas[1:] = np.linspace(0.1, 1, 10)
+gammas[0] = 0.05
+betas = np.round(np.linspace(0.1, 15.1, 15), 1)
+betas = betas[0:2]
 
-# size = make_fig_clean(U, V)
-# with open(f'{beta}-{gamma}-size.p', 'wb') as handle:
-#     pickle.dump(size, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+index = 0
+for beta in betas:
+    for gamma in gammas:
+        beta = 13
+        gamma =  0.3
+        index += 1
+        obj = get_circle(60, 10, 100)
+        nn, nn_numbers = get_neighbors(obj, U, V)
+        for i in tqdm(range(Nit)):
+            do_iter_diffusion_object(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx, nn, nn_numbers, data_array, i)
+        size = make_fig_clean(U, V)
+        results.at[index, 'beta'] = beta
+        results.at[index, 'gamma'] = gamma
+        results.at[index, 'size'] = size
+        results.at[index, 'file_name'] = f'{output_dir}/N_{N}_Nit_{Nit}_a_{alpha}_b_{beta}_c_{gamma}_DU_{D_U}_DV_{D_V}_dt_{dt}_cmap_{color}.png'
+        with open(f'{beta}-{gamma}-size.p', 'wb') as handle:
+            pickle.dump(size, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+with open(f'results_1.p', 'wb') as handle:
+    pickle.dump(results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 # with open(f'{13}-{1}-size.p', 'rb') as handle:
 #     b = pickle.load(handle)
