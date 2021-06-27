@@ -5,19 +5,20 @@ from mpl_toolkits.axes_grid import make_axes_locatable
 from tqdm import tqdm
 import sys
 from numba import njit
+from tqdm import tqdm
 from matplotlib.gridspec import GridSpec
 
 @njit
 def init_arrays(N):
-    U = np.ones((N, N))#np.random.rand(N, N)
+    U = np.ones((N, N))
     V = np.zeros((N, N))
     V[N//2-10 : N//2+10, N//2-10 : N//2+10] = 5
     V[N//5:N//5 + N//10, N//2:N//2 + N//10] = 5
     V[N//2:N//2 + N//10, N//2:N//2 + N//10] = 5
     F = np.zeros((N, N))
     G = np.zeros((N, N))
-    L_U = np.zeros((N, N)) 
-    L_V = np.zeros((N, N)) 
+    L_U = np.zeros((N, N))
+    L_V = np.zeros((N, N))
     return U, V, F, G, L_U, L_V
 
 @njit
@@ -37,9 +38,9 @@ def get_neighbors(Ob, U, V):
             if Ob[i, j] == True:
                 U[i, j] = 0
                 V[i, j] = 0
-            else: 
+            else:
                 if not Ob[(i + 1) % N, j]:
-                    neighbors[i, j, nn_numbers[i, j], 0] = (i + 1) % N 
+                    neighbors[i, j, nn_numbers[i, j], 0] = (i + 1) % N
                     neighbors[i, j, nn_numbers[i, j], 1] = j
                     nn_numbers[i, j] += 1
                 if not Ob[(i - 1) % N, j]:
@@ -47,11 +48,11 @@ def get_neighbors(Ob, U, V):
                     neighbors[i, j, nn_numbers[i, j], 1] = j
                     nn_numbers[i, j] += 1
                 if not Ob[i, (j + 1) % N]:
-                    neighbors[i, j, nn_numbers[i, j], 0] = i 
+                    neighbors[i, j, nn_numbers[i, j], 0] = i
                     neighbors[i, j, nn_numbers[i, j], 1] = (j + 1)  % N
                     nn_numbers[i, j] += 1
                 if not Ob[i, (j - 1) % N]:
-                    neighbors[i, j, nn_numbers[i, j], 0] = i 
+                    neighbors[i, j, nn_numbers[i, j], 0] = i
                     neighbors[i, j, nn_numbers[i, j], 1] = (j - 1)  % N
                     nn_numbers[i, j] += 1
     return neighbors, nn_numbers
@@ -64,7 +65,7 @@ def get_laplacian_with_object(D_U, U, L_U, nn_array, nn_numbers):
     C = D_U/dx**2
     for i in range(0, N):
         for j in range(0, N):
-            L_U[i, j] = 0 
+            L_U[i, j] = 0
             for k in range(nn_numbers[i, j]):
                 neigh_x, neigh_y = nn_array[i, j, k]
                 L_U[i, j] += U[neigh_x, neigh_y]
@@ -73,7 +74,7 @@ def get_laplacian_with_object(D_U, U, L_U, nn_array, nn_numbers):
 
 @njit
 def get_circle(R, displacement_x, displacement_y):
-    obj = np.zeros((N, N))    
+    obj = np.zeros((N, N))
     for i in range(N):
         for j in range(N):
             obj[i, j] = (i- N//2 - displacement_x)**2 + (j- N//2 - displacement_y)**2 < R**2
@@ -88,7 +89,6 @@ def get_laplacian(D_U, U, L_U):
     for i in range(0, N):
         for j in range(0, N):
             L_U[i, j] = C * (U[(i + 1) % N, j]+U[(i - 1 + N) % N, j]+U[i, (j + 1) % N]+ U[i, (j - 1 + N) % N]- 4*U[i, j])
-    
 
 @njit
 def update(A, F_A, L_A, dt):
@@ -126,6 +126,7 @@ def do_iter_diffusion(U, V, F, G, L_U, L_V, D_U, D_V, alpha, beta, gamma, dt, dx
         data_array[i, 1] = np.mean(V)
 
 def animate_func(i):
+    ''' Helper function for matplotlibs' animation functionality. This function is called every animation iteration and returns the updated axis'''
     for j in range(30):
         if circle:
             obj = get_circle(60, 10, 100)
@@ -155,6 +156,7 @@ def mkdir_p(mypath):
 
 # Create new directory
 def explore_colormaps(U, V):
+    ''' Makes a series of figures using all matplotlib colormaps'''
     p =  plt.colormaps()
     output_dir = "data/colormaps"
     mkdir_p(output_dir)
@@ -162,6 +164,7 @@ def explore_colormaps(U, V):
         make_fig(U, V, color, 100, output_dir)
 
 def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
+    '''Saves an image of the predator/prey density color maps and a line chart of their dynamics over time'''
     fig, axes = plt.subplots(1, 3, figsize = (15,5))
     axes[0].plot(data_array[:, 0], label = 'U')
     axes[0].plot(data_array[:, 1], label = 'V')
