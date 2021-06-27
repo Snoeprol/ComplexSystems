@@ -8,9 +8,9 @@ Use git clone to clone the project
 
 This library uses the following packages:
 
-* Numpy
-* Matplotlib
-* Numba*
+* Numpy (Tested on 1.19.5)
+* Matplotlib (Tested on 3.4.1)
+* Numba (Tested on 0.53.1)*
 
 \* Numba is used for performance improvements, it is therefore optional
 
