@@ -15,9 +15,9 @@ This library uses the following packages:
 \* Numba is used for performance improvements, it is therefore optional
 
 ## Usage
-To use this library execute `run.py` with the 4 optional arguments $\beta$, $\alpha$, an object boolean and a video boolean.
+To use this library execute `run.py` with the 4 optional arguments $\beta$, $\gamma$, an object boolean and a video boolean.
 
-The $\beta$ and $\alpha$ parameters refer to the parameters in the transformed version of the Rosenzweig and MacArthur equations. The object boolean will add an obstacle to the lattice. The video boolean will output the results as an MP4, if not `True` the results will be saved as a heat map PNG.
+The $\beta$ and $\gamma$ parameters refer to the parameters in the transformed version of the Rosenzweig and MacArthur equations. The object boolean will add an obstacle to the lattice. The video boolean will output the results as an MP4, if not `True` the results will be saved as a heat map PNG.
 
 An example run is as follows:
 
