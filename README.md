@@ -1,10 +1,18 @@
-# ComplexSystems
+# Effect of objects in predator-prey lattice systems
 
-ComplexSystems is a library which implements a diffusion-reaction equation from 
+This library implements the Rosenzweig and MacArthur predator-prey equations with diffusion-reaction dynamics in a square lattice. An circular object or "obstacle" can be added to the lattice.
 
 ## Installation
 
 Use git clone to clone the project
+
+This library uses the following packages:
+
+* Numpy
+* Matplotlib
+* Numba*
+
+\* Numba is used for performance improvements, it is therefore optional
 
 ## Usage
 
@@ -17,13 +25,22 @@ Will make the needed data to do the complexity analysis
 ```python
 python rabbit.py
 ```
-Will run the agent-based implementation of the intital model.
+Will run the agent-based implementation of the initial model.
 
 # Example results
 
-![alt text](/data/N_40_Nit_10000_a_0.5_b_12_c_0.5_DU_0.01_DV_1_dt_0.05.mp4)
 
-![alt text](/data/N_300_Nit_10000_a_0.5_b_14_c_0.9_DU_0.01_DV_1_dt_0.05_cmap_hot.png)
+Super imposed predator and prey latices without object:
+
+![alt text](/Figures/SamplePlots/gif_demo.gif)
+
+Heat map of predator (V) and prey (U) positions in a lattice.:
+
+![alt text](/Figures/SamplePlots/demo_1.png)
+
+Equilibrium phase with object and density dynamics:
+
+![alt text](/Figures/SamplePlots/demo_3.png)
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)

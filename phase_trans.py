@@ -6,7 +6,7 @@ from mpl_toolkits.axes_grid import make_axes_locatable
 import time
 from tqdm import tqdm
 
-# @njit
+@njit
 def init_arrays(N):
     U = np.ones((N, N))#np.random.rand(N, N)
     V = np.zeros((N, N))
@@ -19,11 +19,11 @@ def init_arrays(N):
     L_V = np.zeros((N, N)) 
     return U, V, F, G, L_U, L_V
 
-# @njit()
+@njit
 def get_F(U, V, alpha, beta, gamma):
     return alpha * U * ((1 - U) - (V / (1 + beta * U)))
 
-# @njit
+@njit
 def get_G(U, V, alpha, beta, gamma):
     return V * (beta * U / (1 + beta * U) - gamma)
 
