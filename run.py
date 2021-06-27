@@ -174,13 +174,13 @@ def make_fig(U, V, color = 'viridis', dpi = 500, output_dir = 'data'):
     axes[0].plot(data_array[:, 1], label = 'V')
     axes[0].legend()
 
-    im1 = axes[1].imshow(U, origin = "Bottom", cmap = plt.get_cmap(color))
+    im1 = axes[1].imshow(U, origin = "lower", cmap = plt.get_cmap(color))
     divider1 = make_axes_locatable(axes[1])
     cax1 = divider1.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(im1, cax=cax1)
     axes[1].title.set_text('U')
 
-    im2 = axes[2].imshow(V, origin = "Bottom", cmap = plt.get_cmap(color))
+    im2 = axes[2].imshow(V, origin = "lower", cmap = plt.get_cmap(color))
     divider2 = make_axes_locatable(axes[2])
     cax2 = divider2.append_axes("right", size="5%", pad=0.05)
     fig.colorbar(im2, cax=cax2)
@@ -208,7 +208,7 @@ circle = sys.argv[3].lower() == 'true'
 # Animation
 video = sys.argv[4].lower() == 'true'
 output_dir = "data"
-fps = 1
+fps = 15
 nSeconds = 30
 
 fig = plt.figure(constrained_layout=True)
@@ -218,18 +218,18 @@ ax2 = fig.add_subplot(gs[0, 2])
 ax3 = fig.add_subplot(gs[1, 2])
 axes = np.array([ax1,ax2,ax3])
 
-axes[0].imshow(U, cmap="PuBuGn",origin='bottom', alpha=0.75,vmin=0,vmax=5)
-axes[0].imshow(V, cmap="OrRd",origin='bottom', alpha=0.5,vmin=0,vmax=5)
+axes[0].imshow(U, cmap="PuBuGn",origin='lower', alpha=0.75,vmin=0,vmax=5)
+axes[0].imshow(V, cmap="OrRd",origin='lower', alpha=0.5,vmin=0,vmax=5)
 axes[0].axis("off")
 
 fs=12
-im_1 = axes[1].imshow(U, cmap="PuBuGn",origin='bottom', interpolation='none',vmin=0,vmax=5)
+im_1 = axes[1].imshow(U, cmap="PuBuGn",origin='lower', interpolation='none',vmin=0,vmax=5)
 divider1 = make_axes_locatable(axes[1])
 cax1 = divider1.append_axes("right", size="5%", pad=0.05)
 fig.colorbar(im_1, cax=cax1)
 axes[1].axis('off')
 
-im_2 = axes[2].imshow(V, cmap="OrRd",origin='bottom', interpolation='none',vmin=0,vmax=5)
+im_2 = axes[2].imshow(V, cmap="OrRd",origin='lower', interpolation='none',vmin=0,vmax=5)
 divider2 = make_axes_locatable(axes[2])
 cax2 = divider2.append_axes("right", size="5%", pad=0.05)
 fig.colorbar(im_2, cax=cax2)
