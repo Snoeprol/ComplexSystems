@@ -223,8 +223,7 @@ nSeconds = 20
 
 fig = plt.figure(constrained_layout=True)
 
-gs = GridSpec(2, 3, figure=fig)
-ax1 = fig.add_subplot(gs[:2, :2])
+gs = GridSpec(2, 3, figure=fig)ax1 = fig.add_subplot(gs[:2, :2])
 ax2 = fig.add_subplot(gs[0, 2])
 ax3 = fig.add_subplot(gs[1, 2])
 axes = np.array([ax1,ax2,ax3])
